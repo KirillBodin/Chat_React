@@ -1,40 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import io from 'socket.io-client';
-
-const socket = io('http://localhost:5000'); // Подключаемся к серверу
+import React, { useState, useEffect } from 'react';
+import Auth from './components/Auth';
+import ChatRoom from './components/ChatRoom';
 
 function App() {
-    const [message, setMessage] = useState('');
-    const [chat, setChat] = useState([]);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [user, setUser] = useState('');
 
     useEffect(() => {
-        socket.on('message', (msg) => {
-            setChat([...chat, msg]); // Добавляем новое сообщение в чат
-        });
-        return () => socket.off('message');
-    }, [chat]);
+        // Проверяем наличие токена в localStorage
+        const token = localStorage.getItem('token');
+        const username = localStorage.getItem('username'); // Сохраняем имя пользователя в localStorage
 
-    const sendMessage = () => {
-        socket.emit('message', message); // Отправляем сообщение
-        setMessage(''); // Очищаем поле ввода
-    };
+        if (token && username) {
+            setIsAuthenticated(true);
+            setUser(username); // Устанавливаем имя пользователя
+        }
+    }, []);
 
     return (
-        <div className="App">
-        <h1>Chat</h1>
         <div>
-        {chat.map((msg, index) => (
-                <div key={index}>{msg}</div>
-))}
-</div>
-    <input
-    type="text"
-    value={message}
-    onChange={(e) => setMessage(e.target.value)}
-    />
-    <button onClick={sendMessage}>Send</button>
+            {isAuthenticated ? (
+                <ChatRoom user={user} />
+            ) : (
+                <Auth setAuthenticated={setIsAuthenticated} setUser={setUser} />
+            )}
         </div>
-);
+    );
 }
+
 
 export default App;

@@ -1,0 +1,10 @@
+.App {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: #f4f4f4;
+    min-height: 100vh;
+}
+
+h2 {
+    color: #333;
+}
