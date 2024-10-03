@@ -1,0 +1,28 @@
+.room-list {
+    padding: 20px;
+    background-color: #f4f4f4;
+    border-radius: 10px;
+}
+
+.room-list h3 {
+    margin-bottom: 10px;
+}
+
+.room-list ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.room-list li {
+    margin-bottom: 5px;
+}
+
+.room-list a {
+    text-decoration: none;
+    color: #007bff;
+    font-weight: bold;
+}
+
+.room-list a:hover {
+    text-decoration: underline;
+}

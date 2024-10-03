@@ -11,22 +11,34 @@ function Auth({ setAuthenticated, setUser }) {
     const handleAuth = async () => {
         const url = isLogin ? '/auth/login' : '/auth/register';
         try {
-            const response = await axios.post(`http://localhost:5000${url}`, {
-                username,
-                password,
-            });
+            const response = await axios.post('http://localhost:5000/auth/login', { username, password });
 
-            // Сохраняем токен в localStorage
-            localStorage.setItem('token', response.data.token);
+            // Логируем ответ от сервера
+            console.log('Response data:', response.data);
 
-            // Сохраняем имя пользователя и устанавливаем аутентификацию
+            // Извлекаем токен и имя пользователя напрямую из ответа
+            const token = response.data.token;
+            const userNameFromResponse = response.data.username; // Переименуем, чтобы не конфликтовать с состоянием
+
+            if (!token || !userNameFromResponse) {
+                throw new Error('Invalid response structure');
+            }
+
+            // Сохраняем токен и имя пользователя в localStorage
+            localStorage.setItem('token', token);
+            localStorage.setItem('username', userNameFromResponse);
+
+            // Обновляем состояние аутентификации в приложении
             setAuthenticated(true);
-            setUser(response.data.username);
+            setUser(userNameFromResponse);
 
         } catch (error) {
+            console.error(error);  // Логируем ошибку для проверки
             setError('Authentication failed. Please try again.');
         }
     };
+
+
 
     return (
         <div className="auth-container">

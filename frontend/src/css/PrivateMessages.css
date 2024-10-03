@@ -1,0 +1,15 @@
+.private-messages-container {
+    padding: 20px;
+}
+
+.messages {
+    height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.message {
+    margin-bottom: 10px;
+}

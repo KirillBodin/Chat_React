@@ -1,127 +1,195 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { Link } from 'react-router-dom';
 import io from 'socket.io-client';
-import '../css/ChatRoom.css';
-import PrivateChat from './PrivateChat'; // Импортируем новый компонент для личных сообщений
+import axios from 'axios';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { Picker } from 'emoji-mart';
+import 'emoji-mart/css/emoji-mart.css';
+import MicIcon from '@mui/icons-material/Mic';
+import StopIcon from '@mui/icons-material/Stop';
+import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
+import '../css/ChatRoom.css'; // Подключаем стили
 
 function ChatRoom({ user }) {
     const [socket, setSocket] = useState(null);
     const [message, setMessage] = useState('');
-    const [messages, setMessages] = useState([]); // Сообщения для комнат
-    const [rooms, setRooms] = useState([]);
+    const [messages, setMessages] = useState([]);
     const [users, setUsers] = useState([]);
+    const [activeUsersInRoom, setActiveUsersInRoom] = useState([]);
+    const [avatars, setAvatars] = useState({});
     const [currentRoom, setCurrentRoom] = useState('general');
-    const [currentRecipient, setCurrentRecipient] = useState(null); // Получатель для личных сообщений
+    const [privateMessages, setPrivateMessages] = useState([]);
+    const [currentRecipient, setCurrentRecipient] = useState(null);
+    const [typing, setTyping] = useState('');
+    const [reactions, setReactions] = useState({});
+    const [showPicker, setShowPicker] = useState(false);
+    const [mediaRecorder, setMediaRecorder] = useState(null);
+    const [audioChunks, setAudioChunks] = useState([]);
 
-    // Подключение к WebSocket при наличии пользователя
     useEffect(() => {
         if (user) {
+            // Подключаемся к сокету
             const newSocket = io('http://localhost:5000', { query: { username: user } });
             setSocket(newSocket);
 
-            // Обработка сообщений в комнатах
             newSocket.on('message', (msg) => {
-                console.log(`Received message from room: ${msg.room}, message: ${msg.text}`);
-                setMessages((prevMessages) => [...prevMessages, msg]); // Добавляем сообщение в массив
+                setMessages((prevMessages) => [...prevMessages, msg]);
+            });
+
+            newSocket.on('privateMessage', (msg) => {
+                setPrivateMessages((prevMessages) => [...prevMessages, { text: msg.text, from: msg.from }]);
+            });
+
+            newSocket.on('displayTyping', ({ from }) => {
+                setTyping(`${from} is typing...`);
+                setTimeout(() => setTyping(''), 2000);
+            });
+
+            newSocket.on('updateActiveUsers', (usersInRoom) => {
+                setActiveUsersInRoom(usersInRoom);
             });
 
             return () => {
                 newSocket.off('message');
+                newSocket.off('privateMessage');
+                newSocket.off('displayTyping');
+                newSocket.off('updateActiveUsers');
                 newSocket.disconnect();
             };
         }
-    }, [user]);
+    }, [user, currentRoom]);
 
-    // Загрузка списка комнат и пользователей
     useEffect(() => {
-        axios.get('http://localhost:5000/api/rooms')
-            .then(response => setRooms(response.data));
-
-        axios.get('http://localhost:5000/api/users')
-            .then(response => {
-                const filteredUsers = response.data.filter((usr) => usr.username !== user);
-                setUsers(filteredUsers); // Исключаем самого пользователя
+        // Запрос для получения сообщений комнаты из базы данных
+        axios.get(`http://localhost:5000/api/message/room/${currentRoom}`)
+            .then((response) => {
+                setMessages(response.data);  // Устанавливаем сообщения в состоянии
+            })
+            .catch((error) => {
+                console.error('Error fetching room messages', error);
             });
-    }, [user]);
 
-    // Загрузка сообщений из комнаты
-    useEffect(() => {
-        const fetchRoomMessages = async () => {
-            if (currentRoom) {
-                console.log(`Loading messages from room ${currentRoom}...`);
-                const response = await axios.get(`http://localhost:5000/api/messages/${currentRoom}`);
-                const roomMessages = Array.isArray(response.data) ? response.data : [];
-                setMessages(roomMessages); // Устанавливаем сообщения комнаты
-                console.log(`Messages from room ${currentRoom}:`, roomMessages);
-            }
+        // Получаем пользователей
+        axios.get('http://localhost:5000/api/users').then(response => {
+            setUsers(response.data);
+            const avatarsData = {};
+            response.data.forEach(usr => {
+                avatarsData[usr.username] = usr.avatarUrl || '';
+            });
+            setAvatars(avatarsData);
+        });
+    }, [currentRoom, user]);
+
+    const startRecording = () => {
+        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+            const recorder = new MediaRecorder(stream);
+            setMediaRecorder(recorder);
+            recorder.start();
+
+            const chunks = [];
+            recorder.ondataavailable = (e) => chunks.push(e.data);
+            setAudioChunks(chunks);
+        });
+    };
+
+    const stopRecording = () => {
+        mediaRecorder.stop();
+        mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            const formData = new FormData();
+            formData.append('audio', audioBlob);
+
+            axios.post('http://localhost:5000/api/voice/upload', formData).then((res) => {
+                socket.emit('message', { audioUrl: res.data.audioUrl, username: user, room: currentRoom });
+                setMessages((prevMessages) => [...prevMessages, { audioUrl: res.data.audioUrl, username: user }]);
+            });
         };
+    };
 
-        fetchRoomMessages();
+    const handleReaction = (emoji, messageId) => {
+        setReactions((prevReactions) => ({
+            ...prevReactions,
+            [messageId]: emoji.native
+        }));
+    };
 
-        if (currentRoom && socket) {
-            console.log(`Joining room: ${currentRoom}`);
-            socket.emit('joinRoom', currentRoom); // Присоединение к комнате
-        }
-    }, [currentRoom, socket]);
-
-    const sendRoomMessage = () => {
+    const sendMessage = () => {
         if (message.trim() && socket) {
-            console.log(`Sending message to room ${currentRoom}: ${message}`);
-            socket.emit('message', { text: message, username: user, room: currentRoom });
-            setMessages((prevMessages) => [...prevMessages, { text: message, username: user, room: currentRoom }]);
-            setMessage(''); // Очищаем поле ввода
+            if (currentRecipient) {
+                socket.emit('privateMessage', { text: message, to: currentRecipient });
+                setPrivateMessages((prevMessages) => [...prevMessages, { text: message, from: user }]);
+            } else {
+                socket.emit('message', { text: message, username: user, room: currentRoom });
+                setMessages((prevMessages) => [...prevMessages, { text: message, username: user }]);
+            }
+            setMessage('');
         }
     };
 
     return (
-        <div className="chat-room">
-            <div className="sidebar">
-                <h3>Users</h3>
-                <ul>
-                    {users.map((usr, index) => (
-                        <li key={index} onClick={() => {
-                            setCurrentRecipient(usr.username);  // Устанавливаем получателя личных сообщений
-                            setCurrentRoom(null);  // Очищаем текущую комнату
-                            console.log(`User ${usr.username} selected for private chat`);
-                        }}>
-                            {usr.username} {usr.username === currentRecipient ? "(selected)" : ""}
-                        </li>
-                    ))}
-                </ul>
-                <h3>Rooms</h3>
-                <ul>
-                    {rooms.map((room, index) => (
-                        <li key={index} onClick={() => {
-                            setCurrentRoom(room);  // Устанавливаем текущую комнату
-                            setCurrentRecipient(null);  // Очищаем личного получателя
-                            console.log(`Room ${room} selected`);
-                        }}>
-                            {room}
-                        </li>
-                    ))}
-                </ul>
+        <div className="chat-room-container">
+            <div className="chat-window">
+                <h2>{currentRecipient ? `Chat with ${currentRecipient}` : `Room: ${currentRoom}`}</h2>
+                <div className="messages">
+                    {currentRecipient
+                        ? privateMessages.map((msg, index) => (
+                            <div key={index}>
+                                <strong>{msg.from}: </strong>{msg.text}
+                                <span>{reactions[msg._id]}</span>
+                                <button onClick={() => setShowPicker(!showPicker)}>😀</button>
+                                {showPicker && (
+                                    <Picker onSelect={(emoji) => handleReaction(emoji, msg._id)} />
+                                )}
+                            </div>
+                        ))
+                        : messages.map((msg, index) => (
+                            <div key={index}>
+                                <strong>{msg.username}: </strong>{msg.text || <audio controls src={msg.audioUrl}></audio>}
+                                <span>{reactions[msg._id]}</span>
+                                <button onClick={() => setShowPicker(!showPicker)}><EmojiEmotionsIcon /></button>
+                                {showPicker && (
+                                    <Picker onSelect={(emoji) => handleReaction(emoji, msg._id)} />
+                                )}
+                            </div>
+                        ))}
+                    <div className="typing-indicator">{typing}</div>
+                </div>
+                <input
+                    type="text"
+                    placeholder="Enter a message"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyPress={() => socket.emit('typing', { to: currentRecipient, from: user })}
+                />
+                <button onClick={sendMessage}>Send</button>
+
+                <div className="voice-controls">
+                    <button onClick={startRecording}><MicIcon /> Start Recording</button>
+                    <button onClick={stopRecording}><StopIcon /> Stop Recording</button>
+                </div>
+
+                <ToastContainer />
             </div>
 
-            <div className="chat-window">
-                {currentRecipient ? (
-                    <PrivateChat user={user} recipient={currentRecipient} />
-                ) : (
-                    <>
-                        <h2>Room: {currentRoom}</h2>
-                        <div className="messages">
-                            {messages.map((msg, index) => (
-                                <div key={index}><strong>{msg.username}: </strong>{msg.text}</div>
-                            ))}
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Type a message"
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)} // Обновляем сообщение
-                        />
-                        <button onClick={sendRoomMessage}>Send</button>
-                    </>
-                )}
+            {/* Перемещаем Users in room направо */}
+            <div className="sidebar-right">
+                <h3>Users in {currentRoom}</h3>
+                <ul>
+                    {users
+                        .filter((usr) => activeUsersInRoom.includes(usr.username))
+                        .map((usr, index) => (
+                            <li key={index}>
+                                <img src={avatars[usr.username]} alt="avatar" className="avatar" />
+                                <Link to={`/profile/${usr.username}`}>{usr.username}</Link>
+                                {activeUsersInRoom.includes(usr.username) ? (
+                                    <span style={{ color: 'green' }}> (Online in room)</span>
+                                ) : (
+                                    <span style={{ color: 'red' }}> (Offline)</span>
+                                )}
+                            </li>
+                        ))}
+                </ul>
             </div>
         </div>
     );
