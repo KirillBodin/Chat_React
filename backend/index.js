@@ -3,7 +3,7 @@ const http = require('http');
 const socketIO = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path'); // Для корректной работы с путями
+const path = require('path');
 const multer = require('multer');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
@@ -35,20 +35,15 @@ app.use(express.json());
 // Настройка статических файлов
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-
-
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/room', roomRoutes);
 app.use('/api/message', messageRoutes);
 app.use('/api/avatars', avatarRoutes);
-//app.use('/api/voice', voiceMessageRoutes);
-
-
 
 // Multer для загрузки аудиофайлов
-const storage = multer.diskStorage({
+const audioStorage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/audio');
     },
@@ -58,14 +53,37 @@ const storage = multer.diskStorage({
         cb(null, filename);
     }
 });
-const upload = multer({ storage });
+const uploadAudio = multer({ storage: audioStorage });
 
-app.post('/api/voice/upload', upload.single('audio'), (req, res) => {
+app.post('/api/voice/upload', uploadAudio.single('audio'), (req, res) => {
     try {
         const audioUrl = `/uploads/audio/${req.file.filename}`;
         res.status(200).json({ audioUrl });
     } catch (error) {
         res.status(500).json({ message: 'Error uploading audio file', error });
+    }
+});
+
+// Multer для загрузки видеофайлов
+const videoStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/video');
+    },
+    filename: (req, file, cb) => {
+        const extension = path.extname(file.originalname);
+        const filename = `${Date.now()}${extension || '.mp4'}`; // По умолчанию видео сохраняем в формате mp4
+        cb(null, filename);
+    }
+});
+const uploadVideo = multer({ storage: videoStorage });
+
+// Маршрут для загрузки видеофайлов
+app.post('/api/video/upload', uploadVideo.single('video'), (req, res) => {
+    try {
+        const videoUrl = `/uploads/video/${req.file.filename}`;
+        res.status(200).json({ videoUrl });
+    } catch (error) {
+        res.status(500).json({ message: 'Error uploading video file', error });
     }
 });
 

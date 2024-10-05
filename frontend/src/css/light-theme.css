@@ -1,0 +1,14 @@
+body.light-mode {
+    background-color: #f4f6f8;
+    color: #000000;
+}
+
+.sidebar {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+.theme-toggle button {
+    background-color: #eceff1;
+    color: #000;
+}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Auth from './components/Auth';
 import ChatRoom from './components/ChatRoom';
 import Profile from './components/Profile';
@@ -11,32 +11,76 @@ import './css/App.css';
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState('');
-    const [isLoading, setIsLoading] = useState(true); // Статус загрузки
+    const [isLoading, setIsLoading] = useState(true);
+    const [isDarkMode, setIsDarkMode] = useState(false); // Theme state
+    const [sidebarWidth, setSidebarWidth] = useState(300); // Начальная ширина Sidebar
 
     useEffect(() => {
-        console.log('Checking authentication status...');
         const token = localStorage.getItem('token');
         const username = localStorage.getItem('username');
+        const savedTheme = localStorage.getItem('theme'); // Check for saved theme
+
+        if (savedTheme) {
+            setIsDarkMode(savedTheme === 'dark');
+        }
 
         if (token && username) {
-            console.log('Authenticated:', username);
             setIsAuthenticated(true);
             setUser(username);
         } else {
-            console.log('Not authenticated');
-            setIsAuthenticated(false); // Устанавливаем false, если токена нет
+            setIsAuthenticated(false);
         }
-        setIsLoading(false); // Устанавливаем загрузку как завершенную
+        setIsLoading(false);
     }, []);
 
+    // Логика для изменения ширины Sidebar в зависимости от ширины окна браузера
+    useEffect(() => {
+        const handleResize = () => {
+            console.log(`Width: ${window.innerWidth}, Height: ${window.innerHeight}`);
+
+            // Изменяем ширину Sidebar в зависимости от ширины окна
+            if (window.innerWidth < 768) {
+                setSidebarWidth(200); // Узкий Sidebar для маленьких экранов
+            } else if (window.innerWidth < 1200) {
+                setSidebarWidth(250); // Средний Sidebar
+            } else {
+                setSidebarWidth(300); // Стандартный Sidebar
+            }
+        };
+
+        // Вызываем handleResize сразу после загрузки страницы
+        handleResize();
+
+        // Добавляем обработчик события resize
+        window.addEventListener('resize', handleResize);
+
+        // Очищаем обработчик при размонтировании компонента
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);
+
+    const toggleTheme = () => {
+        const newTheme = !isDarkMode ? 'dark' : 'light';
+        setIsDarkMode(!isDarkMode);
+        localStorage.setItem('theme', newTheme); // Save theme preference
+    };
+
     if (isLoading) {
-        return <div>Loading...</div>; // Пока идет проверка аутентификации, показываем спиннер
+        return <div>Loading...</div>;
     }
 
     return (
         <Router>
-            <div className="app-container">
-                {isAuthenticated && <Sidebar user={user} />}
+            <div className={`app-container ${isDarkMode ? 'dark-mode' : 'light-mode'}`}>
+                {isAuthenticated && (
+                    <Sidebar
+                        user={user}
+                        toggleTheme={toggleTheme}
+                        isDarkMode={isDarkMode}
+                        sidebarWidth={sidebarWidth} // Передаем ширину Sidebar
+                    />
+                )}
                 <div className="content">
                     <Routes>
                         <Route
@@ -63,7 +107,6 @@ function App() {
                             path="/chat/private/:recipient"
                             element={isAuthenticated ? <PrivateMessages user={user} /> : <Navigate to="/auth" />}
                         />
-                        {/* Если ни один маршрут не подходит, перенаправляем на основную страницу */}
                         <Route path="*" element={<Navigate to={isAuthenticated ? "/chat/rooms" : "/auth"} />} />
                     </Routes>
                 </div>

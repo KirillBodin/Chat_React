@@ -1,24 +1,28 @@
+/* Общие стили для приложения */
+.app-container {
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+    overflow: hidden;
+}
 
+.light-mode {
+    background-color: #f0f2f5;
+    color: #333;
+}
 
+.dark-mode {
+    background-color: #121212;
+    color: #fff;
+}
 
-
+/* Боковая панель */
 .sidebar {
-    padding: 10px;
-}
-
-ul {
-    list-style-type: none;
-    padding: 0;
-}
-
-li {
-    margin: 5px 0;
-}
-
-h3 {
-    margin: 10px 0;
-}
-
-.user-list {
-    padding-left: 20px; /* Отступ для вложенного списка */
+    flex-shrink: 0;
+    width: var(--sidebar-width, 300px); /* Используем переменную ширины */
+    background-color: var(--sidebar-bg-color);
+    color: var(--sidebar-text-color);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
 }

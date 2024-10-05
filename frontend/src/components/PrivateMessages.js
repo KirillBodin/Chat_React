@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Picker } from 'emoji-mart';
@@ -7,7 +7,7 @@ import MicIcon from '@mui/icons-material/Mic';
 import StopIcon from '@mui/icons-material/Stop';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import StopCircleIcon from '@mui/icons-material/StopCircle';
-import '../css/PrivateMessages.css';
+import { Button, IconButton } from '@mui/material';
 
 function PrivateMessages({ user }) {
     const { recipient } = useParams();
@@ -19,8 +19,9 @@ function PrivateMessages({ user }) {
     const [videoChunks, setVideoChunks] = useState([]);
     const [isRecordingAudio, setIsRecordingAudio] = useState(false);
     const [isRecordingVideo, setIsRecordingVideo] = useState(false);
+    const [isVideoWindowOpen, setIsVideoWindowOpen] = useState(false);
+    const videoRef = useRef(null);
 
-    // Получаем сообщения из базы данных
     useEffect(() => {
         axios.get(`http://localhost:5000/api/message/private/${user}/${recipient}`)
             .then((response) => {
@@ -31,7 +32,6 @@ function PrivateMessages({ user }) {
             });
     }, [user, recipient]);
 
-    // Универсальная функция для отправки сообщения (текст, аудио или видео)
     const sendMessage = (newMessage) => {
         setMessages((prevMessages) => [...prevMessages, newMessage]);
         axios.post('http://localhost:5000/api/message/send', newMessage)
@@ -88,7 +88,14 @@ function PrivateMessages({ user }) {
     };
 
     const startRecordingVideo = () => {
+        setIsVideoWindowOpen(true);
         navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+            const videoElement = videoRef.current;
+            if (videoElement) {
+                videoElement.srcObject = stream;
+                videoElement.play();
+            }
+
             const recorder = new MediaRecorder(stream);
             setMediaRecorder(recorder);
             recorder.start();
@@ -117,6 +124,7 @@ function PrivateMessages({ user }) {
                 });
         };
         setIsRecordingVideo(false);
+        setIsVideoWindowOpen(false);
     };
 
     return (
@@ -124,11 +132,11 @@ function PrivateMessages({ user }) {
             <h2>Chat with {recipient}</h2>
             <div className="messages">
                 {messages.map((msg, index) => (
-                    <div key={index} className="message">
+                    <div key={index} className={`message ${msg.username === user ? 'user-message' : 'recipient-message'}`}>
                         <strong>{msg.username}: </strong>
                         {msg.text && <span>{msg.text}</span>}
                         {msg.audioUrl && <audio controls src={`http://localhost:5000${msg.audioUrl}`} />}
-                        {msg.videoUrl && <video controls src={msg.videoUrl} width="300"></video>}
+                        {msg.videoUrl && <video controls src={`http://localhost:5000${msg.videoUrl}`} width="300" />}
                     </div>
                 ))}
             </div>
@@ -140,25 +148,44 @@ function PrivateMessages({ user }) {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                 />
-                <button onClick={handleSendText}>Send</button>
+                <Button variant="contained" color="primary" onClick={handleSendText}>Send</Button>
 
-                <button onClick={() => setShowPicker(!showPicker)}>😀</button>
+                <IconButton onClick={() => setShowPicker(!showPicker)}>
+                    😀
+                </IconButton>
                 {showPicker && (
-                    <Picker onSelect={addEmoji} />
+                    <div className="emoji-picker">
+                        <Picker onSelect={addEmoji} />
+                    </div>
                 )}
 
                 {!isRecordingAudio ? (
-                    <button onClick={startRecordingAudio}><MicIcon /> Start Voice</button>
+                    <IconButton onClick={startRecordingAudio} color="primary">
+                        <MicIcon />
+                    </IconButton>
                 ) : (
-                    <button onClick={stopRecordingAudio}><StopIcon /> Stop Voice</button>
+                    <IconButton onClick={stopRecordingAudio} color="secondary">
+                        <StopIcon />
+                    </IconButton>
                 )}
 
                 {!isRecordingVideo ? (
-                    <button onClick={startRecordingVideo}><VideocamIcon /> Start Video</button>
+                    <IconButton onClick={startRecordingVideo} color="primary">
+                        <VideocamIcon />
+                    </IconButton>
                 ) : (
-                    <button onClick={stopRecordingVideo}><StopCircleIcon /> Stop Video</button>
+                    <IconButton onClick={stopRecordingVideo} color="secondary">
+                        <StopCircleIcon />
+                    </IconButton>
                 )}
             </div>
+
+            {isVideoWindowOpen && (
+                <div className="video-recording-window">
+                    <video ref={videoRef} width="300" height="200"></video>
+                    <Button variant="contained" color="secondary" onClick={stopRecordingVideo}>Stop Recording</Button>
+                </div>
+            )}
         </div>
     );
 }
