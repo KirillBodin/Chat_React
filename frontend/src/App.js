@@ -7,6 +7,8 @@ import RoomList from './components/RoomList';
 import PrivateMessages from './components/PrivateMessages';
 import Sidebar from './components/Sidebar';
 import './css/App.css';
+import NotificationSettings from "./components/NotificationSettings";
+import AccountSettings from "./components/AccountSettings";
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -104,8 +106,16 @@ function App() {
                             element={isAuthenticated ? <Profile /> : <Navigate to="/auth" />}
                         />
                         <Route
+                            path="/settings/notifications"
+                            element={isAuthenticated ? <NotificationSettings user={user} /> : <Navigate to="/auth" />}
+                        />
+                        <Route
                             path="/chat/private/:recipient"
                             element={isAuthenticated ? <PrivateMessages user={user} /> : <Navigate to="/auth" />}
+                        />
+                        <Route
+                            path="/account-settings"
+                            element={isAuthenticated ? <AccountSettings user={user} /> : <Navigate to="/auth" />}
                         />
                         <Route path="*" element={<Navigate to={isAuthenticated ? "/chat/rooms" : "/auth"} />} />
                     </Routes>

@@ -10,8 +10,12 @@ const userRoutes = require('./routes/userRoutes');
 const roomRoutes = require('./routes/roomRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const avatarRoutes = require('./routes/avatarRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const voiceMessageRoutes = require('./routes/voiceMessageRoutes');
+const accountSettingsRoutes = require('./routes/accountSettingsRoutes');
 const Message = require('./models/Message'); // Модель сообщения
+
+
 
 const app = express();
 const server = http.createServer(app);
@@ -41,6 +45,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/room', roomRoutes);
 app.use('/api/message', messageRoutes);
 app.use('/api/avatars', avatarRoutes);
+app.use('/api/notifications', notificationRoutes); // Добавляем наш новый маршрут
+app.use('/api/account-settings', accountSettingsRoutes);
 
 // Multer для загрузки аудиофайлов
 const audioStorage = multer.diskStorage({

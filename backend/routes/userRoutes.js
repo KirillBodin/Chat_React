@@ -9,22 +9,47 @@ const storage = multer.diskStorage({
         cb(null, 'uploads/avatars');
     },
     filename: (req, file, cb) => {
-        cb(null, `${req.body.username}-${Date.now()}-${file.originalname}`);
+        // Если req.body.username недоступен, передаем фиксированное имя
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const username = req.body.username || 'unknown_user';
+        cb(null, `${username}-${uniqueSuffix}-${file.originalname}`);
     }
 });
+
 
 const upload = multer({ storage: storage });
 
 // Маршрут для загрузки аватарки
+// Маршрут для загрузки аватарки
 router.post('/avatar/upload', upload.single('avatar'), async (req, res) => {
     try {
+        // Проверяем данные запроса
+        console.log('Request body:', req.body);
+        console.log('Uploaded file:', req.file);
+
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        // Обновляем данные пользователя в базе
         const user = await User.findOneAndUpdate(
             { username: req.body.username },
-            { avatar: `/uploads/avatars/${req.file.filename}` },
+            { avatarUrl: `/uploads/avatars/${req.file.filename}` }, // Сохраняем URL к аватару
             { new: true }
         );
-        res.json({ message: 'Avatar uploaded successfully', avatar: user.avatar });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Логируем обновленного пользователя
+        console.log('Updated user:', user);
+
+        // Возвращаем успешный ответ
+        res.json({ message: 'Avatar uploaded successfully', avatarUrl: user.avatarUrl });
     } catch (error) {
+        // Логируем ошибку
+        console.error('Error uploading avatar:', error);
         res.status(500).json({ message: 'Error uploading avatar', error });
     }
 });
@@ -53,6 +78,27 @@ router.get('/:username', async (req, res) => {
         res.status(500).json({ message: 'Error fetching profile', error });
     }
 });
+
+// Маршрут для загрузки аватарки
+router.post('/avatar/upload', upload.single('avatar'), async (req, res) => {
+    try {
+        const user = await User.findOneAndUpdate(
+            { username: req.body.username },
+            { avatarUrl: `/uploads/avatars/${req.file.filename}` }, // Сохраняем URL к аватару
+            { new: true }
+        );
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        console.log(user)
+        res.json({ message: 'Avatar uploaded successfully', avatarUrl: user.avatarUrl });
+    } catch (error) {
+        console.error('Error uploading avatar:', error);
+        res.status(500).json({ message: 'Error uploading avatar', error });
+    }
+});
+
 
 // Обновление биографии пользователя
 router.put('/:username/bio', async (req, res) => {
