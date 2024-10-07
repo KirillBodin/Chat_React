@@ -7,19 +7,23 @@ router.get('/:room', async (req, res) => {
     const { room } = req.params;
 
     try {
+        // Fetch only messages related to this specific room
         const roomMessages = await Message.findOne({ room });
 
-        if (roomMessages) {
+        if (roomMessages && roomMessages.messages.length > 0) {
             console.log('Сообщения для комнаты:', roomMessages.messages);
-            res.json(roomMessages.messages);
+            res.json(roomMessages.messages); // Return the array of messages directly
         } else {
             console.log('Сообщений для комнаты не найдено');
-            res.json([]);
+            res.json([]); // Return an empty array if no messages are found
         }
     } catch (error) {
+        console.error('Ошибка получения сообщений для комнаты:', error);
         res.status(500).json({ message: 'Error fetching room messages', error });
     }
 });
+
+
 
 // Получение личных сообщений между двумя пользователями
 router.get('/private/:user1/:user2', async (req, res) => {

@@ -132,23 +132,42 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Socket.io: обработка сообщений в комнате
     socket.on('message', async (msg) => {
-        let roomMessage = await Message.findOne({ room: msg.room });
-        if (!roomMessage) {
-            roomMessage = new Message({ room: msg.room, messages: [] });
+        try {
+            // Найти сообщения для комнаты
+            let roomMessage = await Message.findOne({ room: msg.room });
+
+            // Если не найдено, создать новый объект сообщений для комнаты
+            if (!roomMessage) {
+                roomMessage = new Message({ room: msg.room, messages: [] });
+            }
+
+            // Новое сообщение с поддержкой текста, аудио и видео
+            const newMessage = {
+                text: msg.text || "", // Текст может быть пустым
+                audioUrl: msg.audioUrl || null, // Проверяем наличие аудиосообщения
+                videoUrl: msg.videoUrl || null, // Проверяем наличие видеосообщения
+                username: msg.username,
+                seen: false,
+                timestamp: new Date()
+            };
+
+            // Добавляем новое сообщение в массив сообщений комнаты
+            roomMessage.messages.push(newMessage);
+
+            // Сохранить сообщение
+            await roomMessage.save();
+
+            // Отправляем сообщение в комнату через Socket.io
+            io.to(socket.currentRoom).emit('message', newMessage);
+
+        } catch (error) {
+            console.error('Error saving message:', error);
         }
-
-        roomMessage.messages.push({
-            text: msg.text,
-            username: msg.username,
-            seen: false,
-            timestamp: new Date()
-        });
-
-        await roomMessage.save();
-
-        io.to(socket.currentRoom).emit('message', msg);
     });
+
+
 
     socket.on('disconnect', () => {
         console.log(`User ${username} disconnected`);

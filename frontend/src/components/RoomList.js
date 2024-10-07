@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
-function RoomList({ setCurrentRoom }) {
+function RoomList() {
     const [rooms, setRooms] = useState([]);
 
     useEffect(() => {
@@ -17,9 +17,9 @@ function RoomList({ setCurrentRoom }) {
             <ul>
                 {rooms.map((room, index) => (
                     <li key={index}>
-                        {/* Удаляем использование setCurrentRoom */}
-                        <Link to={`/chat/room/${room}`}>
-                            {room}
+                        {/* Access the room's name instead of the entire object */}
+                        <Link to={`/chat/room/${room.name}`}>
+                            {room.name}
                         </Link>
                     </li>
                 ))}

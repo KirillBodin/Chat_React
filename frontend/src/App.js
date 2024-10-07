@@ -97,10 +97,8 @@ function App() {
                             path="/chat/rooms"
                             element={isAuthenticated ? <RoomList /> : <Navigate to="/auth" />}
                         />
-                        <Route
-                            path="/chat/room/:roomName"
-                            element={isAuthenticated ? <ChatRoom user={user} /> : <Navigate to="/auth" />}
-                        />
+                        <Route path="/chat/room/:roomName" element={isAuthenticated ? <ChatRoom user={user} /> : <Navigate to="/auth" />} />
+
                         <Route
                             path="/profile/:username"
                             element={isAuthenticated ? <Profile /> : <Navigate to="/auth" />}

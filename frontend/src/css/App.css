@@ -57,14 +57,14 @@
     transition: all 0.3s ease;
 }
 
-/* Контейнер для личных сообщений */
-.private-messages-container {
+/* Контейнер для чата в комнате */
+.chat-room-container {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    width: 80%; /* Задаем ширину в процентах */
-    max-width: 90%; /* Максимальная ширина относительно экрана */
-    min-width: 50%; /* Минимальная ширина относительно экрана */
+    width: 80vw; /* Используем 80% от ширины окна браузера */
+    max-width: 1000px; /* Максимальная ширина */
+    min-width: 300px; /* Минимальная ширина */
     margin: 0 auto;
     background-color: #fff;
     padding: 20px;
@@ -99,7 +99,7 @@
     align-self: flex-end;
 }
 
-.recipient-message {
+.room-message {
     background-color: #e9ecef;
     align-self: flex-start;
 }
@@ -159,41 +159,22 @@
 }
 
 /* Адаптивность */
-/* Контейнер для личных сообщений */
-.private-messages-container {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    width: 80vw; /* Используем 80% от ширины окна браузера */
-    max-width: 1000px; /* Максимальная ширина */
-    min-width: 300px; /* Минимальная ширина */
-    margin: 0 auto;
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    overflow-y: auto;
-    transition: width 0.3s ease;
-}
-
-/* Адаптивность */
 @media (max-width: 1200px) {
-    .private-messages-container {
+    .chat-room-container {
         width: 85vw; /* Увеличиваем ширину при уменьшении окна браузера */
     }
 }
 
 @media (max-width: 768px) {
-    .private-messages-container {
+    .chat-room-container {
         width: 90vw; /* Еще больше увеличиваем ширину для маленьких экранов */
         padding: 10px;
     }
 }
 
 @media (max-width: 480px) {
-    .private-messages-container {
+    .chat-room-container {
         width: 95vw; /* Почти вся ширина окна браузера */
         padding: 5px;
     }
 }
-

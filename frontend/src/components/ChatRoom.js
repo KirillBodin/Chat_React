@@ -1,196 +1,217 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import io from 'socket.io-client';
+import React, { useEffect, useState, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import io from 'socket.io-client';
 import { Picker } from 'emoji-mart';
 import 'emoji-mart/css/emoji-mart.css';
 import MicIcon from '@mui/icons-material/Mic';
 import StopIcon from '@mui/icons-material/Stop';
-import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
-import '../css/ChatRoom.css'; // Подключаем стили
+import VideocamIcon from '@mui/icons-material/Videocam';
+import StopCircleIcon from '@mui/icons-material/StopCircle';
+import { Button, IconButton } from '@mui/material';
 
 function ChatRoom({ user }) {
-    const [socket, setSocket] = useState(null);
-    const [message, setMessage] = useState('');
+    const { roomName } = useParams();
     const [messages, setMessages] = useState([]);
-    const [users, setUsers] = useState([]);
-    const [activeUsersInRoom, setActiveUsersInRoom] = useState([]);
-    const [avatars, setAvatars] = useState({});
-    const [currentRoom, setCurrentRoom] = useState('general');
-    const [privateMessages, setPrivateMessages] = useState([]);
-    const [currentRecipient, setCurrentRecipient] = useState(null);
-    const [typing, setTyping] = useState('');
-    const [reactions, setReactions] = useState({});
+    const [message, setMessage] = useState('');
     const [showPicker, setShowPicker] = useState(false);
     const [mediaRecorder, setMediaRecorder] = useState(null);
     const [audioChunks, setAudioChunks] = useState([]);
+    const [videoChunks, setVideoChunks] = useState([]);
+    const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+    const [isRecordingVideo, setIsRecordingVideo] = useState(false);
+    const [isVideoWindowOpen, setIsVideoWindowOpen] = useState(false);
+    const videoRef = useRef(null);
+    const socketRef = useRef(null);
 
     useEffect(() => {
-        if (user) {
-            // Подключаемся к сокету
-            const newSocket = io('http://localhost:5000', { query: { username: user } });
-            setSocket(newSocket);
-
-            newSocket.on('message', (msg) => {
-                setMessages((prevMessages) => [...prevMessages, msg]);
-            });
-
-            newSocket.on('privateMessage', (msg) => {
-                setPrivateMessages((prevMessages) => [...prevMessages, { text: msg.text, from: msg.from }]);
-            });
-
-            newSocket.on('displayTyping', ({ from }) => {
-                setTyping(`${from} is typing...`);
-                setTimeout(() => setTyping(''), 2000);
-            });
-
-            newSocket.on('updateActiveUsers', (usersInRoom) => {
-                setActiveUsersInRoom(usersInRoom);
-            });
-
-            return () => {
-                newSocket.off('message');
-                newSocket.off('privateMessage');
-                newSocket.off('displayTyping');
-                newSocket.off('updateActiveUsers');
-                newSocket.disconnect();
-            };
-        }
-    }, [user, currentRoom]);
-
-    useEffect(() => {
-        // Запрос для получения сообщений комнаты из базы данных
-        axios.get(`http://localhost:5000/api/message/room/${currentRoom}`)
+        // Fetch existing room messages from the server
+        axios.get(`http://localhost:5000/api/message/${roomName}`)
             .then((response) => {
-                setMessages(response.data);  // Устанавливаем сообщения в состоянии
+                setMessages(response.data);
             })
             .catch((error) => {
-                console.error('Error fetching room messages', error);
+                console.error('Error fetching room messages:', error);
             });
 
-        // Получаем пользователей
-        axios.get('http://localhost:5000/api/users').then(response => {
-            setUsers(response.data);
-            const avatarsData = {};
-            response.data.forEach(usr => {
-                avatarsData[usr.username] = usr.avatarUrl || '';
-            });
-            setAvatars(avatarsData);
+        // Connect to Socket.io server
+        socketRef.current = io('http://localhost:5000', { query: { username: user } });
+
+        // Join the room
+        socketRef.current.emit('joinRoom', roomName);
+
+        // Listen for new messages
+        socketRef.current.on('message', (newMessage) => {
+            setMessages((prevMessages) => [...prevMessages, newMessage]);
         });
-    }, [currentRoom, user]);
 
-    const startRecording = () => {
+        return () => {
+            socketRef.current.disconnect();
+        };
+    }, [roomName, user]);
+
+    const handleSendText = () => {
+        if (message.trim()) {
+            const newMessage = { text: message, username: user, room: roomName };
+            socketRef.current.emit('message', newMessage);
+            setMessage(''); // Clear input after sending
+        }
+    };
+
+    const addEmoji = (emoji) => {
+        setMessage((prevMessage) => prevMessage + emoji.native);
+    };
+
+    const startRecordingAudio = () => {
         navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
             const recorder = new MediaRecorder(stream);
             setMediaRecorder(recorder);
             recorder.start();
+            setIsRecordingAudio(true);
 
             const chunks = [];
-            recorder.ondataavailable = (e) => chunks.push(e.data);
+            recorder.ondataavailable = (e) => {
+                chunks.push(e.data);
+            };
             setAudioChunks(chunks);
         });
     };
 
-    const stopRecording = () => {
+
+
+    const startRecordingVideo = () => {
+        setIsVideoWindowOpen(true);
+        navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+            const videoElement = videoRef.current;
+            if (videoElement) {
+                videoElement.srcObject = stream;
+                videoElement.play();
+            }
+
+            const recorder = new MediaRecorder(stream);
+            setMediaRecorder(recorder);
+            recorder.start();
+            setIsRecordingVideo(true);
+
+            const chunks = [];
+            recorder.ondataavailable = (e) => {
+                chunks.push(e.data);
+            };
+            setVideoChunks(chunks);
+        });
+    };
+
+    const stopRecordingAudio = () => {
         mediaRecorder.stop();
         mediaRecorder.onstop = () => {
             const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
             const formData = new FormData();
             formData.append('audio', audioBlob);
 
-            axios.post('http://localhost:5000/api/voice/upload', formData).then((res) => {
-                socket.emit('message', { audioUrl: res.data.audioUrl, username: user, room: currentRoom });
-                setMessages((prevMessages) => [...prevMessages, { audioUrl: res.data.audioUrl, username: user }]);
-            });
+            axios.post('http://localhost:5000/api/voice/upload', formData)
+                .then((res) => {
+                    const audioMessage = {
+                        audioUrl: res.data.audioUrl, // Ссылка на загруженный аудиофайл
+                        room: roomName,
+                        username: user,
+                        text: "", // Аудиосообщение не содержит текста
+                    };
+                    socketRef.current.emit('message', audioMessage); // Отправляем аудиосообщение
+                })
+                .catch((error) => {
+                    console.error('Error uploading audio:', error);
+                });
         };
+        setIsRecordingAudio(false);
     };
 
-    const handleReaction = (emoji, messageId) => {
-        setReactions((prevReactions) => ({
-            ...prevReactions,
-            [messageId]: emoji.native
-        }));
+
+    const stopRecordingVideo = () => {
+        mediaRecorder.stop();
+        mediaRecorder.onstop = () => {
+            const videoBlob = new Blob(videoChunks, { type: 'video/mp4' });
+            const formData = new FormData();
+            formData.append('video', videoBlob);
+
+            axios.post('http://localhost:5000/api/video/upload', formData)
+                .then((res) => {
+                    const videoMessage = {
+                        videoUrl: res.data.videoUrl, // Ссылка на загруженный видеофайл
+                        room: roomName,
+                        username: user,
+                        text: "", // Видеосообщение не содержит текста
+                    };
+                    socketRef.current.emit('message', videoMessage); // Отправляем видеосообщение
+                })
+                .catch((error) => {
+                    console.error('Error uploading video:', error);
+                });
+        };
+        setIsRecordingVideo(false);
+        setIsVideoWindowOpen(false);
     };
 
-    const sendMessage = () => {
-        if (message.trim() && socket) {
-            if (currentRecipient) {
-                socket.emit('privateMessage', { text: message, to: currentRecipient });
-                setPrivateMessages((prevMessages) => [...prevMessages, { text: message, from: user }]);
-            } else {
-                socket.emit('message', { text: message, username: user, room: currentRoom });
-                setMessages((prevMessages) => [...prevMessages, { text: message, username: user }]);
-            }
-            setMessage('');
-        }
-    };
+
 
     return (
         <div className="chat-room-container">
-            <div className="chat-window">
-                <h2>{currentRecipient ? `Chat with ${currentRecipient}` : `Room: ${currentRoom}`}</h2>
-                <div className="messages">
-                    {currentRecipient
-                        ? privateMessages.map((msg, index) => (
-                            <div key={index}>
-                                <strong>{msg.from}: </strong>{msg.text}
-                                <span>{reactions[msg._id]}</span>
-                                <button onClick={() => setShowPicker(!showPicker)}>😀</button>
-                                {showPicker && (
-                                    <Picker onSelect={(emoji) => handleReaction(emoji, msg._id)} />
-                                )}
-                            </div>
-                        ))
-                        : messages.map((msg, index) => (
-                            <div key={index}>
-                                <strong>{msg.username}: </strong>{msg.text || <audio controls src={msg.audioUrl}></audio>}
-                                <span>{reactions[msg._id]}</span>
-                                <button onClick={() => setShowPicker(!showPicker)}><EmojiEmotionsIcon /></button>
-                                {showPicker && (
-                                    <Picker onSelect={(emoji) => handleReaction(emoji, msg._id)} />
-                                )}
-                            </div>
-                        ))}
-                    <div className="typing-indicator">{typing}</div>
-                </div>
+            <h2>Room: {roomName}</h2>
+            <div className="messages">
+                {messages.map((msg, index) => (
+                    <div key={index} className={`message ${msg.username === user ? 'user-message' : 'room-message'}`}>
+                        <strong>{msg.username}: </strong>
+                        {msg.text && <span>{msg.text}</span>}
+                        {msg.audioUrl && <audio controls src={`http://localhost:5000${msg.audioUrl}`} />}
+                        {msg.videoUrl && <video controls src={`http://localhost:5000${msg.videoUrl}`} width="300" />}
+                    </div>
+                ))}
+            </div>
+
+            <div className="input-container">
                 <input
                     type="text"
-                    placeholder="Enter a message"
+                    placeholder="Enter your message"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={() => socket.emit('typing', { to: currentRecipient, from: user })}
                 />
-                <button onClick={sendMessage}>Send</button>
+                <Button variant="contained" color="primary" onClick={handleSendText}>Send</Button>
 
-                <div className="voice-controls">
-                    <button onClick={startRecording}><MicIcon /> Start Recording</button>
-                    <button onClick={stopRecording}><StopIcon /> Stop Recording</button>
+                <IconButton onClick={() => setShowPicker(!showPicker)}>
+                    😀
+                </IconButton>
+                {showPicker && (
+                    <div className="emoji-picker">
+                        <Picker onSelect={addEmoji} />
+                    </div>
+                )}
+
+                {!isRecordingAudio ? (
+                    <IconButton onClick={startRecordingAudio} color="primary">
+                        <MicIcon />
+                    </IconButton>
+                ) : (
+                    <IconButton onClick={stopRecordingAudio} color="secondary">
+                        <StopIcon />
+                    </IconButton>
+                )}
+
+                {!isRecordingVideo ? (
+                    <IconButton onClick={startRecordingVideo} color="primary">
+                        <VideocamIcon />
+                    </IconButton>
+                ) : (
+                    <IconButton onClick={stopRecordingVideo} color="secondary">
+                        <StopCircleIcon />
+                    </IconButton>
+                )}
+            </div>
+
+            {isVideoWindowOpen && (
+                <div className="video-recording-window">
+                    <video ref={videoRef} width="300" height="200"></video>
+                    <Button variant="contained" color="secondary" onClick={stopRecordingVideo}>Stop Recording</Button>
                 </div>
-
-                <ToastContainer />
-            </div>
-
-            {/* Перемещаем Users in room направо */}
-            <div className="sidebar-right">
-                <h3>Users in {currentRoom}</h3>
-                <ul>
-                    {users
-                        .filter((usr) => activeUsersInRoom.includes(usr.username))
-                        .map((usr, index) => (
-                            <li key={index}>
-                                <img src={avatars[usr.username]} alt="avatar" className="avatar" />
-                                <Link to={`/profile/${usr.username}`}>{usr.username}</Link>
-                                {activeUsersInRoom.includes(usr.username) ? (
-                                    <span style={{ color: 'green' }}> (Online in room)</span>
-                                ) : (
-                                    <span style={{ color: 'red' }}> (Offline)</span>
-                                )}
-                            </li>
-                        ))}
-                </ul>
-            </div>
+            )}
         </div>
     );
 }
