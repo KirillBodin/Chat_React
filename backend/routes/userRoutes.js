@@ -1,119 +1,96 @@
-const express = require('express');
-const User = require('../models/User');
-const router = express.Router();
-const multer = require('multer');
+const express = require('express'); // Підключаємо Express для створення маршрутизатора / Importing Express to create a router
+const User = require('../models/User'); // Підключаємо модель користувача / Importing User model
+const router = express.Router(); // Створюємо маршрутизатор Express / Creating an Express router
+const multer = require('multer'); // Підключаємо Multer для завантаження файлів / Importing Multer for file uploads
 
-// Настраиваем Multer для загрузки аватарок
+// Налаштовуємо Multer для завантаження аватарок / Configure Multer for avatar uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/avatars');
+        cb(null, 'uploads/avatars'); // Вказуємо директорію для збереження аватарок / Set directory for saving avatars
     },
     filename: (req, file, cb) => {
-        // Если req.body.username недоступен, передаем фиксированное имя
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const username = req.body.username || 'unknown_user';
-        cb(null, `${username}-${uniqueSuffix}-${file.originalname}`);
+        // Якщо req.body.username недоступний, використовуємо фіксоване ім'я / If req.body.username is not available, use a fixed name
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9); // Генеруємо унікальний суфікс для імені файлу / Generate a unique suffix for the filename
+        const username = req.body.username || 'unknown_user'; // Використовуємо ім'я користувача або фіксоване значення / Use username or fallback to 'unknown_user'
+        cb(null, `${username}-${uniqueSuffix}-${file.originalname}`); // Формуємо ім'я файлу / Form the filename
     }
 });
 
+const upload = multer({ storage: storage }); // Налаштовуємо Multer для використання сховища / Configure Multer with the storage
 
-const upload = multer({ storage: storage });
-
-// Маршрут для загрузки аватарки
-// Маршрут для загрузки аватарки
+// Маршрут для завантаження аватарки / Route for avatar upload
 router.post('/avatar/upload', upload.single('avatar'), async (req, res) => {
     try {
-        // Проверяем данные запроса
+        // Логування даних запиту / Log request data
         console.log('Request body:', req.body);
         console.log('Uploaded file:', req.file);
 
         if (!req.file) {
-            return res.status(400).json({ message: 'No file uploaded' });
+            return res.status(400).json({ message: 'No file uploaded' }); // Якщо файл не завантажено, повертаємо помилку / Return error if no file uploaded
         }
 
-        // Обновляем данные пользователя в базе
+        // Оновлюємо дані користувача в базі / Update user data in the database
         const user = await User.findOneAndUpdate(
-            { username: req.body.username },
-            { avatarUrl: `/uploads/avatars/${req.file.filename}` }, // Сохраняем URL к аватару
-            { new: true }
+            { username: req.body.username }, // Знаходимо користувача за ім'ям / Find user by username
+            { avatarUrl: `/uploads/avatars/${req.file.filename}` }, // Зберігаємо URL до аватара / Save avatar URL
+            { new: true } // Повертаємо оновленого користувача / Return updated user
         );
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'User not found' }); // Якщо користувача не знайдено, повертаємо помилку / Return error if user not found
         }
 
-        // Логируем обновленного пользователя
+        // Логування оновленого користувача / Log updated user
         console.log('Updated user:', user);
 
-        // Возвращаем успешный ответ
+        // Повертаємо успішний результат / Return success response
         res.json({ message: 'Avatar uploaded successfully', avatarUrl: user.avatarUrl });
     } catch (error) {
-        // Логируем ошибку
+        // Логування помилки / Log error
         console.error('Error uploading avatar:', error);
-        res.status(500).json({ message: 'Error uploading avatar', error });
+        res.status(500).json({ message: 'Error uploading avatar', error }); // Повертаємо помилку сервера / Return server error
     }
 });
 
-// Получение всех пользователей
+// Отримання всіх користувачів / Get all users
 router.get('/', async (req, res) => {
     try {
-        const users = await User.find();
-        res.json(users);
+        const users = await User.find(); // Отримуємо всіх користувачів з бази / Fetch all users from the database
+        res.json(users); // Повертаємо користувачів у відповідь / Return users in response
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching users', error });
+        res.status(500).json({ message: 'Error fetching users', error }); // Повертаємо помилку сервера / Return server error
     }
 });
 
-// Получение профиля пользователя по имени
+// Отримання профілю користувача за ім'ям / Get user profile by username
 router.get('/:username', async (req, res) => {
-    const { username } = req.params;
+    const { username } = req.params; // Отримуємо ім'я користувача з параметрів запиту / Extract username from request parameters
 
     try {
-        const user = await User.findOne({ username });
+        const user = await User.findOne({ username }); // Шукаємо користувача за ім'ям / Find user by username
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'User not found' }); // Якщо користувача не знайдено, повертаємо помилку / Return error if user not found
         }
-        res.json(user);
+        res.json(user); // Повертаємо профіль користувача / Return user profile
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching profile', error });
+        res.status(500).json({ message: 'Error fetching profile', error }); // Повертаємо помилку сервера / Return server error
     }
 });
 
-// Маршрут для загрузки аватарки
-router.post('/avatar/upload', upload.single('avatar'), async (req, res) => {
-    try {
-        const user = await User.findOneAndUpdate(
-            { username: req.body.username },
-            { avatarUrl: `/uploads/avatars/${req.file.filename}` }, // Сохраняем URL к аватару
-            { new: true }
-        );
-
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        console.log(user)
-        res.json({ message: 'Avatar uploaded successfully', avatarUrl: user.avatarUrl });
-    } catch (error) {
-        console.error('Error uploading avatar:', error);
-        res.status(500).json({ message: 'Error uploading avatar', error });
-    }
-});
-
-
-// Обновление биографии пользователя
+// Оновлення біографії користувача / Update user bio
 router.put('/:username/bio', async (req, res) => {
-    const { username } = req.params;
-    const { bio } = req.body;
+    const { username } = req.params; // Отримуємо ім'я користувача з параметрів запиту / Extract username from request parameters
+    const { bio } = req.body; // Отримуємо біографію з тіла запиту / Extract bio from request body
 
     try {
-        const user = await User.findOneAndUpdate({ username }, { bio }, { new: true });
+        const user = await User.findOneAndUpdate({ username }, { bio }, { new: true }); // Оновлюємо біографію користувача / Update user's bio
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'User not found' }); // Якщо користувача не знайдено, повертаємо помилку / Return error if user not found
         }
-        res.json(user);
+        res.json(user); // Повертаємо оновлений профіль користувача / Return updated user profile
     } catch (error) {
-        res.status(500).json({ message: 'Error updating bio', error });
+        res.status(500).json({ message: 'Error updating bio', error }); // Повертаємо помилку сервера / Return server error
     }
 });
 
-module.exports = router;
+module.exports = router; // Експортуємо маршрутизатор / Export the router

@@ -1,180 +1,82 @@
-/* Общие стили для приложения */
-.app-container {
-    display: flex;
-    flex-direction: row;
-    height: 100vh;
-    overflow: hidden;
-}
-
-.light-mode {
-    background-color: #f0f2f5;
-    color: #333;
+/* Основные переменные для тем */
+:root {
+    --background-color: #fff;
+    --text-color: #000;
+    --message-background-color: #f0f0f0;
+    --input-background-color: #fff;
 }
 
 .dark-mode {
-    background-color: #121212;
-    color: #fff;
+    --background-color: #121212;
+    --text-color: #fff;
+    --message-background-color: #1e1e1e;
+    --input-background-color: #333;
 }
 
-/* Боковая панель */
-.sidebar {
-    flex-shrink: 0;
-    width: 300px;
-    background-color: var(--sidebar-bg-color);
-    color: var(--sidebar-text-color);
+.light-mode {
+    --background-color: #fff;
+    --text-color: #000;
+    --message-background-color: #f0f0f0;
+    --input-background-color: #fff;
+}
+
+/* Применение стилей для html и body */
+html, body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+/* Основные стили приложения */
+.app-container {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    min-height: 100vh; /* Устраняет белые полосы */
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
 }
 
-.sidebar .MuiTypography-root {
-    color: var(--sidebar-text-color);
-}
-
-.sidebar a {
-    color: var(--sidebar-text-color);
-    text-decoration: none;
-}
-
-/* Цвета для темной и светлой темы */
-:root {
-    --sidebar-bg-color: #1f1f1f;
-    --sidebar-text-color: #fff;
-}
-
-.light-mode :root {
-    --sidebar-bg-color: #fff;
-    --sidebar-text-color: #000;
-}
-
-/* Основная часть чата */
-.content {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    padding: 20px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-/* Контейнер для чата в комнате */
-.chat-room-container {
+/* Контейнер для приватных сообщений */
+.private-messages-container {
+    background-color: var(--background-color);
+    color: var(--text-color);
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    width: 80vw; /* Используем 80% от ширины окна браузера */
-    max-width: 1000px; /* Максимальная ширина */
-    min-width: 300px; /* Минимальная ширина */
+    width: 60vw;
+    max-width: 1000px;
+    min-width: 300px;
     margin: 0 auto;
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     overflow-y: auto;
-    transition: width 0.3s ease;
-}
-
-/* Контейнер сообщений */
-.messages {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 15px;
-    background-color: #f9f9f9;
-    border-radius: 5px;
-    margin-bottom: 20px;
-    height: 60vh; /* Задаем высоту относительно экрана */
 }
 
 .message {
-    padding: 12px;
+    background-color: var(--message-background-color);
+    color: var(--text-color);
+    padding: 15px;
     border-radius: 10px;
-    max-width: 70%;
+    margin-bottom: 10px;
     word-wrap: break-word;
 }
 
-.user-message {
-    background-color: #cce5ff;
-    align-self: flex-end;
-}
-
-.room-message {
-    background-color: #e9ecef;
-    align-self: flex-start;
-}
-
-/* Контейнер для ввода сообщений */
 .input-container {
+    background-color: var(--input-background-color);
+    color: var(--text-color);
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px;
-    background-color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    transition: width 0.3s ease;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
 }
 
-.input-container input {
-    flex-grow: 1;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    outline: none;
-}
-
-/* Стили для иконок и кнопок */
-.MuiButtonBase-root, .MuiButton-root {
-    color: #333;
-    font-size: 1.2rem;
-}
-
-.MuiIconButton-root {
-    padding: 8px;
-}
-
-/* Окно записи видео */
-.video-recording-window {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(0, 0, 0, 0.8);
-    padding: 20px;
-    border-radius: 10px;
-    z-index: 1000;
-}
-
-.video-recording-window video {
-    border-radius: 10px;
-    max-width: 100%;
-}
-
-/* Эмодзи-пикер */
-.emoji-picker {
-    position: absolute;
-    bottom: 70px;
-    right: 20px;
-}
-
-/* Адаптивность */
-@media (max-width: 1200px) {
-    .chat-room-container {
-        width: 85vw; /* Увеличиваем ширину при уменьшении окна браузера */
-    }
-}
-
-@media (max-width: 768px) {
-    .chat-room-container {
-        width: 90vw; /* Еще больше увеличиваем ширину для маленьких экранов */
-        padding: 10px;
-    }
-}
-
-@media (max-width: 480px) {
-    .chat-room-container {
-        width: 95vw; /* Почти вся ширина окна браузера */
-        padding: 5px;
-    }
+/* Убедитесь, что также стили для header, footer и других возможных элементов */
+header, footer {
+    background-color: var(--background-color);
+    color: var(--text-color);
 }
