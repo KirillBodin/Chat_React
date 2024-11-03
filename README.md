@@ -78,21 +78,3 @@ Register or log in with your credentials.
 Join chat rooms or start private conversations.
 Customize your profile and notification settings.
 
-Project Structure
-chat-app/
-|-- server/
-|   |-- models/
-|   |-- routes/
-|   |-- controllers/
-|   |-- uploads/
-|   `-- server.js
-|-- client/
-|   |-- src/
-|   |   |-- components/
-|   |   |-- context/
-|   |   |-- pages/
-|   |   |-- App.js
-|   |   `-- index.js
-|   |-- public/
-|   `-- package.json
-|-- README.md
